@@ -11,6 +11,9 @@ use Interop\Http\Server\RequestHandlerInterface;
 use Dflydev\FigCookies\SetCookie;
 use Dflydev\FigCookies\FigResponseCookies;
 
+use Ellipse\Session\Exceptions\SessionsDisabledException;
+use Ellipse\Session\Exceptions\SessionAlreadyStartedException;
+
 class StartSessionMiddleware implements MiddlewareInterface
 {
     /**
@@ -40,16 +43,33 @@ class StartSessionMiddleware implements MiddlewareInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
+        // Ensure session are not diabled.
+        if (session_status() === PHP_SESSION_DISABLED) {
+
+            throw new SessionsDisabledException;
+
+        }
+
+        // Ensure session is not already started.
+        if (session_status() === PHP_SESSION_ACTIVE) {
+
+            throw new SessionAlreadyStartedException;
+
+        }
+
+        // Set the session id from the request cookies when present.
         $options = $this->cookieOptions();
 
         $session_id = $this->sessionId($request, $options);
 
         if ($session_id != '') session_id($session_id);
 
+        // Start the session and delegate the request processing.
         session_start(['use_cookies' => false, 'use_only_cookies' => true]);
 
         $response = $handler->handle($request);
 
+        // Save the session and return a response with the session cookie.
         $session_id = session_id();
 
         session_write_close();

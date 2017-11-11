@@ -11,6 +11,8 @@ use Interop\Http\Server\RequestHandlerInterface;
 use Zend\Diactoros\Response\TextResponse;
 
 use Ellipse\Session\StartSessionMiddleware;
+use Ellipse\Session\Exceptions\SessionsDisabledException;
+use Ellipse\Session\Exceptions\SessionAlreadyStartedException;
 
 describe('StartSessionMiddleware', function () {
 
@@ -32,8 +34,8 @@ describe('StartSessionMiddleware', function () {
 
             $nocookie = ['use_cookies' => false, 'use_only_cookies' => true];
 
+            allow('session_status')->toBeCalled()->andReturn(PHP_SESSION_NONE);
             allow('session_start')->toBeCalled()->with($nocookie)->andReturn(true);
-            allow('session_id')->toBeCalled()->andReturn('sessionid');
             allow('session_name')->toBeCalled()->andReturn('default_cookie_name');
             allow('session_get_cookie_params')->toBeCalled()->andReturn([
                 'path' => '/default/path',
@@ -93,9 +95,49 @@ describe('StartSessionMiddleware', function () {
 
         });
 
+        context('when the sessions are disabled', function () {
+
+            it('should throw a SessionsDisabledException', function () {
+
+                allow('session_status')->toBeCalled()->andReturn(PHP_SESSION_DISABLED);
+
+                $test = function () {
+
+                    $this->middleware->process($this->request->get(), $this->handler->get());
+
+                };
+
+                $exception = new SessionsDisabledException;
+
+                expect($test)->toThrow($exception);
+
+            });
+
+        });
+
+        context('when the session is alread started', function () {
+
+            it('should throw a SessionAlreadyStartedException', function () {
+
+                allow('session_status')->toBeCalled()->andReturn(PHP_SESSION_ACTIVE);
+
+                $test = function () {
+
+                    $this->middleware->process($this->request->get(), $this->handler->get());
+
+                };
+
+                $exception = new SessionAlreadyStartedException;
+
+                expect($test)->toThrow($exception);
+
+            });
+
+        });
+
         context('when the request do not have a session cookie', function () {
 
-            it('should use the session id returned by session_id()', function () {
+            it('should create a new session id', function () {
 
                 $this->request->getCookieParams->returns([]);
 
@@ -104,7 +146,7 @@ describe('StartSessionMiddleware', function () {
                 $test = $middleware->process($this->request->get(), $this->handler->get())
                     ->getHeaderLine('set-cookie');
 
-                expect($test)->toContain('cookie_name=sessionid');
+                expect($test)->toContain('cookie_name=' . session_id());
 
             });
 
@@ -114,7 +156,14 @@ describe('StartSessionMiddleware', function () {
 
             it('should use the session id from the request', function () {
 
-                //
+                $this->request->getCookieParams->returns(['cookie_name' => 'incomingsessionid']);
+
+                $middleware = new StartSessionMiddleware(['name' => 'cookie_name']);
+
+                $test = $middleware->process($this->request->get(), $this->handler->get())
+                    ->getHeaderLine('set-cookie');
+
+                expect($test)->toContain('cookie_name=incomingsessionid');
 
             });
 
@@ -130,7 +179,7 @@ describe('StartSessionMiddleware', function () {
                 $timestamp = time() + 3600;
                 $date = gmdate('D, d M Y H:i:s T', $timestamp);
 
-                expect($test)->toContain('default_cookie_name=sessionid');
+                expect($test)->toContain('default_cookie_name=' . session_id());
                 expect($test)->toContain('Path=/default/path');
                 expect($test)->toContain('Domain=default.domain.com');
                 expect($test)->toContain('Expires=' . $date);
@@ -151,7 +200,7 @@ describe('StartSessionMiddleware', function () {
                 $test = $middleware->process($this->request->get(), $this->handler->get())
                     ->getHeaderLine('set-cookie');
 
-                expect($test)->toContain('cookie_name=sessionid');
+                expect($test)->toContain('cookie_name=' . session_id());
 
             });
 
@@ -293,7 +342,7 @@ describe('StartSessionMiddleware', function () {
                 $timestamp = time() + 7200;
                 $date = gmdate('D, d M Y H:i:s T', $timestamp);
 
-                expect($test)->toContain('cookie_name=sessionid');
+                expect($test)->toContain('cookie_name=' . session_id());
                 expect($test)->toContain('Path=/path');
                 expect($test)->toContain('Domain=domain.com');
                 expect($test)->toContain('Expires=' . $date);

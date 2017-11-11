@@ -1,0 +1,47 @@
+{
+    "name": "ellipse/session-start",
+    "type": "library",
+    "description": "Psr-15 middleware allowing to use session with Psr-7 request and response",
+    "keywords": [
+        "psr-15",
+        "psr-7",
+        "middleware",
+        "session",
+        "request",
+        "response"
+    ],
+    "license": "MIT",
+    "homepage": "https://github.com/ellipsephp/session-start",
+    "support": {
+        "issues": "https://github.com/ellipsephp/session-start/issues",
+        "source": "https://github.com/ellipsephp/session-start"
+    },
+    "authors": [
+        {
+            "name": "pmall",
+            "email": "pierre.mallinjoud@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.1",
+        "psr/http-message": "^1.0",
+        "http-interop/http-server-handler": "^1.0",
+        "http-interop/http-server-middleware": "^1.0",
+        "dflydev/fig-cookies": "^1.0"
+    },
+    "require-dev": {
+        "kahlan/kahlan": "^4.0",
+        "eloquent/phony-kahlan": "^1.0",
+        "zendframework/zend-diactoros": "^1.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "Ellipse\\Session\\": "src"
+        }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-master": "1.0.x-dev"
+        }
+    }
+}

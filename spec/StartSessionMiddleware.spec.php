@@ -43,7 +43,7 @@ describe('StartSessionMiddleware', function () {
                 'httponly' => false,
             ]);
 
-            $this->request = mock(ServerRequestInterface::class)->get();
+            $this->request = mock(ServerRequestInterface::class);
             $this->response = new TextResponse('body', 404, ['set-cookie' => 'test=value']);
 
             $this->handler = mock(RequestHandlerInterface::class);
@@ -54,7 +54,7 @@ describe('StartSessionMiddleware', function () {
 
         it('should return a response', function () {
 
-            $test = $this->middleware->process($this->request, $this->handler->get());
+            $test = $this->middleware->process($this->request->get(), $this->handler->get());
 
             expect($test)->toBeAnInstanceOf(ResponseInterface::class);
 
@@ -62,7 +62,7 @@ describe('StartSessionMiddleware', function () {
 
         it('should call the request handler ->handle() method with the request', function () {
 
-            $test = $this->middleware->process($this->request, $this->handler->get());
+            $test = $this->middleware->process($this->request->get(), $this->handler->get());
 
             $this->handler->handle->calledWith($this->request);
 
@@ -70,7 +70,7 @@ describe('StartSessionMiddleware', function () {
 
         it('should return a response with the same body as the one returned by the request handler', function () {
 
-            $test = $this->middleware->process($this->request, $this->handler->get());
+            $test = $this->middleware->process($this->request->get(), $this->handler->get());
 
             expect($test->getBody()->getContents())->toEqual('body');
 
@@ -78,7 +78,7 @@ describe('StartSessionMiddleware', function () {
 
         it('should return a response with the same status code as the one returned by the request handler', function () {
 
-            $test = $this->middleware->process($this->request, $this->handler->get());
+            $test = $this->middleware->process($this->request->get(), $this->handler->get());
 
             expect($test->getStatusCode())->toEqual(404);
 
@@ -86,10 +86,37 @@ describe('StartSessionMiddleware', function () {
 
         it('should return a response with the same headers as the one returned by the request handler', function () {
 
-            $test = $this->middleware->process($this->request, $this->handler->get());
+            $test = $this->middleware->process($this->request->get(), $this->handler->get());
 
             expect($test->getHeaderLine('Content-type'))->toContain('text');
             expect($test->getHeaderLine('Set-cookie'))->toContain('test=value');
+
+        });
+
+        context('when the request do not have a session cookie', function () {
+
+            it('should use the session id returned by session_id()', function () {
+
+                $this->request->getCookieParams->returns([]);
+
+                $middleware = new StartSessionMiddleware(['name' => 'cookie_name']);
+
+                $test = $middleware->process($this->request->get(), $this->handler->get())
+                    ->getHeaderLine('set-cookie');
+
+                expect($test)->toContain('cookie_name=sessionid');
+
+            });
+
+        });
+
+        context('when the request has a session cookie', function () {
+
+            it('should use the session id from the request', function () {
+
+                //
+
+            });
 
         });
 
@@ -97,7 +124,7 @@ describe('StartSessionMiddleware', function () {
 
             it('should return a response with a session cookie using the default options', function () {
 
-                $test = $this->middleware->process($this->request, $this->handler->get())
+                $test = $this->middleware->process($this->request->get(), $this->handler->get())
                     ->getHeaderLine('set-cookie');
 
                 $timestamp = time() + 3600;
@@ -121,7 +148,7 @@ describe('StartSessionMiddleware', function () {
 
                 $middleware = new StartSessionMiddleware(['name' => 'cookie_name']);
 
-                $test = $middleware->process($this->request, $this->handler->get())
+                $test = $middleware->process($this->request->get(), $this->handler->get())
                     ->getHeaderLine('set-cookie');
 
                 expect($test)->toContain('cookie_name=sessionid');
@@ -136,7 +163,7 @@ describe('StartSessionMiddleware', function () {
 
                 $middleware = new StartSessionMiddleware(['path' => '/path']);
 
-                $test = $middleware->process($this->request, $this->handler->get())
+                $test = $middleware->process($this->request->get(), $this->handler->get())
                     ->getHeaderLine('set-cookie');
 
                 expect($test)->toContain('Path=/path');
@@ -151,7 +178,7 @@ describe('StartSessionMiddleware', function () {
 
                 $middleware = new StartSessionMiddleware(['domain' => 'domain.com']);
 
-                $test = $middleware->process($this->request, $this->handler->get())
+                $test = $middleware->process($this->request->get(), $this->handler->get())
                     ->getHeaderLine('set-cookie');
 
                 expect($test)->toContain('Domain=domain.com');
@@ -166,7 +193,7 @@ describe('StartSessionMiddleware', function () {
 
                 $middleware = new StartSessionMiddleware(['lifetime' => 7200]);
 
-                $test = $middleware->process($this->request, $this->handler->get())
+                $test = $middleware->process($this->request->get(), $this->handler->get())
                     ->getHeaderLine('set-cookie');
 
                 $timestamp = time() + 7200;
@@ -187,7 +214,7 @@ describe('StartSessionMiddleware', function () {
 
                     $middleware = new StartSessionMiddleware(['secure' => true]);
 
-                    $test = $middleware->process($this->request, $this->handler->get())
+                    $test = $middleware->process($this->request->get(), $this->handler->get())
                         ->getHeaderLine('set-cookie');
 
                     expect($test)->toContain('Secure');
@@ -202,7 +229,7 @@ describe('StartSessionMiddleware', function () {
 
                     $middleware = new StartSessionMiddleware(['secure' => false]);
 
-                    $test = $middleware->process($this->request, $this->handler->get())
+                    $test = $middleware->process($this->request->get(), $this->handler->get())
                         ->getHeaderLine('set-cookie');
 
                     expect($test)->not->toContain('Secure');
@@ -221,7 +248,7 @@ describe('StartSessionMiddleware', function () {
 
                     $middleware = new StartSessionMiddleware(['httponly' => true]);
 
-                    $test = $middleware->process($this->request, $this->handler->get())
+                    $test = $middleware->process($this->request->get(), $this->handler->get())
                         ->getHeaderLine('set-cookie');
 
                     expect($test)->toContain('HttpOnly');
@@ -236,7 +263,7 @@ describe('StartSessionMiddleware', function () {
 
                     $middleware = new StartSessionMiddleware(['httponly' => false]);
 
-                    $test = $middleware->process($this->request, $this->handler->get())
+                    $test = $middleware->process($this->request->get(), $this->handler->get())
                         ->getHeaderLine('set-cookie');
 
                     expect($test)->not->toContain('HttpOnly');
@@ -260,7 +287,7 @@ describe('StartSessionMiddleware', function () {
                     'HTTPONLY' => true,
                 ]);
 
-                $test = $middleware->process($this->request, $this->handler->get())
+                $test = $middleware->process($this->request->get(), $this->handler->get())
                     ->getHeaderLine('set-cookie');
 
                 $timestamp = time() + 7200;

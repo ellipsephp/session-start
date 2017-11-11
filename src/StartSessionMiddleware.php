@@ -40,10 +40,13 @@ class StartSessionMiddleware implements MiddlewareInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        session_start([
-            'use_cookies' => false,
-            'use_only_cookies' => true,
-        ]);
+        $options = $this->cookieOptions();
+
+        $session_id = $this->sessionId($request, $options);
+
+        if ($session_id != '') session_id($session_id);
+
+        session_start(['use_cookies' => false, 'use_only_cookies' => true]);
 
         $response = $handler->handle($request);
 
@@ -51,7 +54,7 @@ class StartSessionMiddleware implements MiddlewareInterface
 
         session_write_close();
 
-        $cookie = $this->sessionCookie($session_id);
+        $cookie = $this->sessionCookie($session_id, $options);
 
         return FigResponseCookies::set($response, $cookie);
     }
@@ -73,21 +76,36 @@ class StartSessionMiddleware implements MiddlewareInterface
     }
 
     /**
+     * Return the session id from the given request. Default to empty string.
+     *
+     * @param string    $session_id
+     * @param array     $options
+     * @return string
+     */
+    private function sessionId(ServerRequestInterface $request, array $options): string
+    {
+        $name = $options['name'];
+
+        $cookies = $request->getCookieParams();
+
+        return $cookies[$name] ?? '';
+    }
+
+    /**
      * Return a cookie containing the given session id.
      *
-     * @param string $session_id
+     * @param string    $session_id
+     * @param array     $options
      * @return \Dflydev\FigCookies\SetCookie
      */
-    private function sessionCookie(string $session_id): SetCookie
+    private function sessionCookie(string $session_id, array $options): SetCookie
     {
-        $cookie = $this->cookieOptions();
-
-        $cookie_name = $cookie['name'];
-        $cookie_lifetime = $cookie['lifetime'];
-        $cookie_path = $cookie['path'];
-        $cookie_domain = $cookie['domain'];
-        $secure = $cookie['secure'];
-        $httponly = $cookie['httponly'];
+        $cookie_name = $options['name'];
+        $cookie_lifetime = $options['lifetime'];
+        $cookie_path = $options['path'];
+        $cookie_domain = $options['domain'];
+        $secure = $options['secure'];
+        $httponly = $options['httponly'];
 
         $timestamp = $cookie_lifetime <= 0 ? 0 : time() + $cookie_lifetime;
 

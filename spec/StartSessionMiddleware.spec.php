@@ -13,6 +13,7 @@ use Zend\Diactoros\Response\TextResponse;
 use Ellipse\Session\StartSessionMiddleware;
 use Ellipse\Session\Exceptions\SessionsDisabledException;
 use Ellipse\Session\Exceptions\SessionAlreadyStartedException;
+use Ellipse\Session\Exceptions\SessionAlreadyClosedException;
 
 describe('StartSessionMiddleware', function () {
 
@@ -32,9 +33,10 @@ describe('StartSessionMiddleware', function () {
 
         beforeEach(function () {
 
+            $statuses = [PHP_SESSION_NONE, PHP_SESSION_NONE, PHP_SESSION_ACTIVE];
             $nocookie = ['use_cookies' => false, 'use_only_cookies' => true];
 
-            allow('session_status')->toBeCalled()->andReturn(PHP_SESSION_NONE);
+            allow('session_status')->toBeCalled()->andReturn(...$statuses);
             allow('session_start')->toBeCalled()->with($nocookie)->andReturn(true);
             allow('session_name')->toBeCalled()->andReturn('default_cookie_name');
             allow('session_get_cookie_params')->toBeCalled()->andReturn([
@@ -64,7 +66,7 @@ describe('StartSessionMiddleware', function () {
 
         it('should call the request handler ->handle() method with the request', function () {
 
-            $test = $this->middleware->process($this->request->get(), $this->handler->get());
+            $this->middleware->process($this->request->get(), $this->handler->get());
 
             $this->handler->handle->calledWith($this->request);
 
@@ -72,17 +74,20 @@ describe('StartSessionMiddleware', function () {
 
         it('should return a response with the same body as the one returned by the request handler', function () {
 
-            $test = $this->middleware->process($this->request->get(), $this->handler->get());
+            $test = $this->middleware->process($this->request->get(), $this->handler->get())
+                ->getBody()
+                ->getContents();
 
-            expect($test->getBody()->getContents())->toEqual('body');
+            expect($test)->toEqual('body');
 
         });
 
         it('should return a response with the same status code as the one returned by the request handler', function () {
 
-            $test = $this->middleware->process($this->request->get(), $this->handler->get());
+            $test = $this->middleware->process($this->request->get(), $this->handler->get())
+                ->getStatusCode();
 
-            expect($test->getStatusCode())->toEqual(404);
+            expect($test)->toEqual(404);
 
         });
 
@@ -115,7 +120,7 @@ describe('StartSessionMiddleware', function () {
 
         });
 
-        context('when the session is alread started', function () {
+        context('when the session is already started', function () {
 
             it('should throw a SessionAlreadyStartedException', function () {
 
@@ -128,6 +133,28 @@ describe('StartSessionMiddleware', function () {
                 };
 
                 $exception = new SessionAlreadyStartedException;
+
+                expect($test)->toThrow($exception);
+
+            });
+
+        });
+
+        context('when the session is already closed', function () {
+
+            it('should throw a SessionAlreadyClosedException', function () {
+
+                $statuses = [PHP_SESSION_NONE, PHP_SESSION_NONE, PHP_SESSION_NONE];
+
+                allow('session_status')->toBeCalled()->andReturn(...$statuses);
+
+                $test = function () {
+
+                    $this->middleware->process($this->request->get(), $this->handler->get());
+
+                };
+
+                $exception = new SessionAlreadyClosedException;
 
                 expect($test)->toThrow($exception);
 

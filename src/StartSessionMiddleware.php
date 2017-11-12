@@ -13,6 +13,7 @@ use Dflydev\FigCookies\FigResponseCookies;
 
 use Ellipse\Session\Exceptions\SessionsDisabledException;
 use Ellipse\Session\Exceptions\SessionAlreadyStartedException;
+use Ellipse\Session\Exceptions\SessionAlreadyClosedException;
 
 class StartSessionMiddleware implements MiddlewareInterface
 {
@@ -43,19 +44,8 @@ class StartSessionMiddleware implements MiddlewareInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        // Ensure session are not diabled.
-        if (session_status() === PHP_SESSION_DISABLED) {
-
-            throw new SessionsDisabledException;
-
-        }
-
-        // Ensure session is not already started.
-        if (session_status() === PHP_SESSION_ACTIVE) {
-
-            throw new SessionAlreadyStartedException;
-
-        }
+        $this->failWhenDisabled();
+        $this->failWhenStarted();
 
         // Set the session id from the request cookies when present.
         $options = $this->cookieOptions();
@@ -70,13 +60,58 @@ class StartSessionMiddleware implements MiddlewareInterface
         $response = $handler->handle($request);
 
         // Save the session and return a response with the session cookie.
+        $this->failWhenClosed();
+
         $session_id = session_id();
 
         session_write_close();
 
-        $cookie = $this->sessionCookie($session_id, $options);
+        return $this->withSessionCookie($response, $session_id, $options);
+    }
 
-        return FigResponseCookies::set($response, $cookie);
+    /**
+     * Fail when the sessions are disabled.
+     *
+     * @return void
+     * @throws \Ellipse\Session\Exceptions\SessionsDisabledException
+     */
+    private function failWhenDisabled(): void
+    {
+        if (session_status() === PHP_SESSION_DISABLED) {
+
+            throw new SessionsDisabledException;
+
+        }
+    }
+
+    /**
+     * Fail when the session has already started.
+     *
+     * @return void
+     * @throws \Ellipse\Session\Exceptions\SessionAlreadyStartedException
+     */
+    private function failWhenStarted(): void
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+
+            throw new SessionAlreadyStartedException;
+
+        }
+    }
+
+    /**
+     * Fail when the session has already been closed.
+     *
+     * @return void
+     * @throws \Ellipse\Session\Exceptions\SessionAlreadyClosedException
+     */
+    private function failWhenClosed(): void
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+
+            throw new SessionAlreadyClosedException;
+
+        }
     }
 
     /**
@@ -112,13 +147,15 @@ class StartSessionMiddleware implements MiddlewareInterface
     }
 
     /**
-     * Return a cookie containing the given session id.
+     * Return new response based on the given response with a cookie based on
+     * the given session id and cookie options.
      *
-     * @param string    $session_id
-     * @param array     $options
-     * @return \Dflydev\FigCookies\SetCookie
+     * @param \Psr\Http\Message\ResponseInterface   $response
+     * @param string                                $session_id
+     * @param array                                 $options
+     * @return \Psr\Http\Message\ResponseInterface
      */
-    private function sessionCookie(string $session_id, array $options): SetCookie
+    private function withSessionCookie(ResponseInterface $response, string $session_id, array $options): ResponseInterface
     {
         $cookie_name = $options['name'];
         $cookie_lifetime = $options['lifetime'];
@@ -129,12 +166,14 @@ class StartSessionMiddleware implements MiddlewareInterface
 
         $timestamp = $cookie_lifetime <= 0 ? 0 : time() + $cookie_lifetime;
 
-        return SetCookie::create($cookie_name, $session_id)
+        $cookie = SetCookie::create($cookie_name, $session_id)
             ->withExpires($timestamp)
             ->withMaxAge($timestamp)
             ->withPath($cookie_path)
             ->withDomain($cookie_domain)
             ->withSecure($secure)
             ->withHttpOnly($httponly);
+
+        return FigResponseCookies::set($response, $cookie);
     }
 }

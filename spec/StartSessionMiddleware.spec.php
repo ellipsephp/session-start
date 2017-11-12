@@ -34,10 +34,10 @@ describe('StartSessionMiddleware', function () {
         beforeEach(function () {
 
             $statuses = [PHP_SESSION_NONE, PHP_SESSION_NONE, PHP_SESSION_ACTIVE];
-            $nocookie = ['use_cookies' => false, 'use_only_cookies' => true];
+            $options = StartSessionMiddleware::SESSION_OPTIONS;
 
             allow('session_status')->toBeCalled()->andReturn(...$statuses);
-            allow('session_start')->toBeCalled()->with($nocookie)->andReturn(true);
+            allow('session_start')->toBeCalled()->with($options)->andReturn(true);
             allow('session_name')->toBeCalled()->andReturn('default_cookie_name');
             allow('session_get_cookie_params')->toBeCalled()->andReturn([
                 'path' => '/default/path',

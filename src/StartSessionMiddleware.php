@@ -18,6 +18,16 @@ use Ellipse\Session\Exceptions\SessionAlreadyClosedException;
 class StartSessionMiddleware implements MiddlewareInterface
 {
     /**
+     * Session options disabling php session cookie handling.
+     *
+     * @var array
+     */
+    const SESSION_OPTIONS = [
+        'use_cookies' => false,
+        'use_only_cookies' => true,
+    ];
+
+    /**
      * The session cookie options.
      *
      * @var array
@@ -44,9 +54,6 @@ class StartSessionMiddleware implements MiddlewareInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        $this->failWhenDisabled();
-        $this->failWhenStarted();
-
         // Set the session id from the request cookies when present.
         $options = $this->cookieOptions();
 
@@ -55,13 +62,18 @@ class StartSessionMiddleware implements MiddlewareInterface
         if ($session_id != '') session_id($session_id);
 
         // Start the session and delegate the request processing.
-        session_start(['use_cookies' => false, 'use_only_cookies' => true]);
+        $this->failWhenDisabled();
+        $this->failWhenStarted();
+
+        session_name($options['name']);
+
+        session_start(self::SESSION_OPTIONS);
 
         $response = $handler->handle($request);
 
-        // Save the session and return a response with the session cookie.
         $this->failWhenClosed();
 
+        // Save the session and return a response with the session cookie.
         $session_id = session_id();
 
         session_write_close();
@@ -147,7 +159,7 @@ class StartSessionMiddleware implements MiddlewareInterface
     }
 
     /**
-     * Return new response based on the given response with a cookie based on
+     * Return new response based on the given response with a cookie built from
      * the given session id and cookie options.
      *
      * @param \Psr\Http\Message\ResponseInterface   $response

@@ -12,7 +12,7 @@ This package provides a Psr-15 middleware allowing to use session with Psr-7 req
 
 # Using the start session middleware
 
-This middleware use the default php session mechanism adapted to Psr-7 request and response flow. It disable the default php session cookie and attach one to the produced Psr-7 response instead.
+This middleware use the default php session mechanism adapted to Psr-7 request and response flow. The default php session cookie is disabled and the session id is manually stored in a cookie readed from the Psr-7 request and attached to the Psr-7 response.
 
 By default values returned by `session_name()` and `session_get_cookie_params` are used to build the session cookie. An optional array of options can be given to the middleware in order to overwrite those default values:
 

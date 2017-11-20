@@ -203,14 +203,14 @@ describe('StartSessionMiddleware', function () {
                 $test = $this->middleware->process($this->request->get(), $this->handler->get())
                     ->getHeaderLine('set-cookie');
 
-                $timestamp = time() + 3600;
-                $date = gmdate('D, d M Y H:i:s T', $timestamp);
+                $maxage = 3600;
+                $expires = gmdate('D, d M Y H:i:s T', time() + $maxage);
 
                 expect($test)->toContain('default_cookie_name=' . session_id());
                 expect($test)->toContain('Path=/default/path');
                 expect($test)->toContain('Domain=default.domain.com');
-                expect($test)->toContain('Expires=' . $date);
-                expect($test)->toContain('Max-Age=' . $timestamp);
+                expect($test)->toContain('Expires=' . $expires);
+                expect($test)->toContain('Max-Age=' . $maxage);
                 expect($test)->not->toContain('Secure');
                 expect($test)->not->toContain('HttpOnly');
 
@@ -265,18 +265,54 @@ describe('StartSessionMiddleware', function () {
 
         context('when the given cookie options array contain a lifetime key', function () {
 
-            it('should set a cookie with expires and max-age values', function () {
+            context('when the lifetime is greater than 0', function () {
 
-                $middleware = new StartSessionMiddleware(['lifetime' => 7200]);
+                it('should set a cookie with expires and max-age values', function () {
 
-                $test = $middleware->process($this->request->get(), $this->handler->get())
-                    ->getHeaderLine('set-cookie');
+                    $middleware = new StartSessionMiddleware(['lifetime' => 7200]);
 
-                $timestamp = time() + 7200;
-                $date = gmdate('D, d M Y H:i:s T', $timestamp);
+                    $test = $middleware->process($this->request->get(), $this->handler->get())
+                        ->getHeaderLine('set-cookie');
 
-                expect($test)->toContain('Expires=' . $date);
-                expect($test)->toContain('Max-Age=' . $timestamp);
+                    $maxage = 7200;
+                    $expires = gmdate('D, d M Y H:i:s T', time() + $maxage);
+
+                    expect($test)->toContain('Expires=' . $expires);
+                    expect($test)->toContain('Max-Age=' . $maxage);
+
+                });
+
+            });
+
+            context('when the lifetime is equal to 0', function () {
+
+                it('should set a cookie with no expires and no max-age values', function () {
+
+                    $middleware = new StartSessionMiddleware(['lifetime' => 0]);
+
+                    $test = $middleware->process($this->request->get(), $this->handler->get())
+                        ->getHeaderLine('set-cookie');
+
+                    expect($test)->not->toContain('Expires');
+                    expect($test)->not->toContain('Max-Age');
+
+                });
+
+            });
+
+            context('when the lifetime is lesser than 0', function () {
+
+                it('should set a cookie with no expires and no max-age values', function () {
+
+                    $middleware = new StartSessionMiddleware(['lifetime' => -1]);
+
+                    $test = $middleware->process($this->request->get(), $this->handler->get())
+                        ->getHeaderLine('set-cookie');
+
+                    expect($test)->not->toContain('Expires');
+                    expect($test)->not->toContain('Max-Age');
+
+                });
 
             });
 
@@ -366,14 +402,14 @@ describe('StartSessionMiddleware', function () {
                 $test = $middleware->process($this->request->get(), $this->handler->get())
                     ->getHeaderLine('set-cookie');
 
-                $timestamp = time() + 7200;
-                $date = gmdate('D, d M Y H:i:s T', $timestamp);
+                $maxage = 7200;
+                $expires = gmdate('D, d M Y H:i:s T', time() + $maxage);
 
                 expect($test)->toContain('cookie_name=' . session_id());
                 expect($test)->toContain('Path=/path');
                 expect($test)->toContain('Domain=domain.com');
-                expect($test)->toContain('Expires=' . $date);
-                expect($test)->toContain('Max-Age=' . $timestamp);
+                expect($test)->toContain('Expires=' . $expires);
+                expect($test)->toContain('Max-Age=' . $maxage);
                 expect($test)->toContain('Secure');
                 expect($test)->toContain('HttpOnly');
 

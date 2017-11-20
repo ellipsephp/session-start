@@ -170,21 +170,24 @@ class StartSessionMiddleware implements MiddlewareInterface
     private function withSessionCookie(ResponseInterface $response, string $session_id, array $options): ResponseInterface
     {
         $cookie_name = $options['name'];
-        $cookie_lifetime = $options['lifetime'];
+        $cookie_lifetime = $options['lifetime'] < 0 ? 0 : $options['lifetime'];
         $cookie_path = $options['path'];
         $cookie_domain = $options['domain'];
         $secure = $options['secure'];
         $httponly = $options['httponly'];
 
-        $timestamp = $cookie_lifetime <= 0 ? 0 : time() + $cookie_lifetime;
-
         $cookie = SetCookie::create($cookie_name, $session_id)
-            ->withExpires($timestamp)
-            ->withMaxAge($timestamp)
+            ->withMaxAge($cookie_lifetime)
             ->withPath($cookie_path)
             ->withDomain($cookie_domain)
             ->withSecure($secure)
             ->withHttpOnly($httponly);
+
+        if ($cookie_lifetime > 0) {
+
+            $cookie = $cookie->withExpires(time() + $cookie_lifetime);
+
+        }
 
         return FigResponseCookies::set($response, $cookie);
     }

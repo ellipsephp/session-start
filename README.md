@@ -34,7 +34,7 @@ use Ellipse\Session\StartSessionMiddleware;
 
 // All middleware processed after this one will have acces to the $_SESSION data.
 // The session cookie name will by 'my_session_cookie'. See above for other options.
-$middleware = new SessionHandlerMiddleware([
+$middleware = new StartSessionMiddleware([
     'name' => 'my_session_cookie',
 ]);
 ```

@@ -4,9 +4,8 @@ namespace Ellipse\Session;
 
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
-
-use Interop\Http\Server\MiddlewareInterface;
-use Interop\Http\Server\RequestHandlerInterface;
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 
 use Dflydev\FigCookies\SetCookie;
 use Dflydev\FigCookies\FigResponseCookies;
@@ -48,8 +47,8 @@ class StartSessionMiddleware implements MiddlewareInterface
      * Start the session, delegate the request processing and add the session
      * cookie to the response.
      *
-     * @param \Psr\Http\Message\ServerRequestInterface      $request
-     * @param \Interop\Http\Server\RequestHandlerInterface  $handler
+     * @param \Psr\Http\Message\ServerRequestInterface  $request
+     * @param \Psr\Http\Server\RequestHandlerInterface  $handler
      * @return \Psr\Http\Message\ResponseInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface

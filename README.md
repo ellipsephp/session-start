@@ -1,6 +1,6 @@
 # Session start
 
-This package provides a Psr-15 middleware allowing to use session with Psr-7 request and response.
+This package provides a [Psr-15 middleware](https://www.php-fig.org/psr/psr-15/) allowing to use session with Psr-7 request and response.
 
 **Require** php >= 7.1
 

@@ -4,11 +4,8 @@
     "description": "Psr-15 middleware allowing to use session with Psr-7 request and response",
     "keywords": [
         "psr-15",
-        "psr-7",
         "middleware",
-        "session",
-        "request",
-        "response"
+        "session"
     ],
     "license": "MIT",
     "homepage": "https://github.com/ellipsephp/session-start",

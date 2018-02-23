@@ -163,16 +163,40 @@ describe('StartSessionMiddleware', function () {
 
         context('when the request do not have a session cookie', function () {
 
-            it('should create a new session id', function () {
+            beforeEach(function () {
 
                 $this->request->getCookieParams->returns([]);
+
+            });
+
+            it('should not set the session id', function () {
+
+                $this->set = false;
+
+                allow('session_id')->toBeCalled()->with('incomingsessionid')->andRun(function () {
+
+                    $this->set = true;
+
+                });
+
+                $middleware = new StartSessionMiddleware(['name' => 'cookie_name']);
+
+                $middleware->process($this->request->get(), $this->handler->get());
+
+                expect($this->set)->toBeFalsy();
+
+            });
+
+            it('should attach the session id to the response', function () {
+
+                allow('session_id')->toBeCalled()->andReturn('newsessionid');
 
                 $middleware = new StartSessionMiddleware(['name' => 'cookie_name']);
 
                 $test = $middleware->process($this->request->get(), $this->handler->get())
                     ->getHeaderLine('set-cookie');
 
-                expect($test)->toContain('cookie_name=' . session_id());
+                expect($test)->toContain('cookie_name=newsessionid');
 
             });
 
@@ -180,9 +204,33 @@ describe('StartSessionMiddleware', function () {
 
         context('when the request has a session cookie', function () {
 
-            it('should use the session id from the request', function () {
+            beforeEach(function () {
 
                 $this->request->getCookieParams->returns(['cookie_name' => 'incomingsessionid']);
+
+            });
+
+            it('should set the session id from the request', function () {
+
+                $this->set = false;
+
+                allow('session_id')->toBeCalled()->with('incomingsessionid')->andRun(function () {
+
+                    $this->set = true;
+
+                });
+
+                $middleware = new StartSessionMiddleware(['name' => 'cookie_name']);
+
+                $middleware->process($this->request->get(), $this->handler->get());
+
+                expect($this->set)->toBeTruthy();
+
+            });
+
+            it('should attach the session id to the response', function () {
+
+                allow('session_id')->toBeCalled()->andReturn('incomingsessionid');
 
                 $middleware = new StartSessionMiddleware(['name' => 'cookie_name']);
 

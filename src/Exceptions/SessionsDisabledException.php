@@ -4,7 +4,7 @@ namespace Ellipse\Session\Exceptions;
 
 use RuntimeException;
 
-class SessionsDisabledException extends RuntimeException
+class SessionsDisabledException extends RuntimeException implements SessionStartExceptionInterface
 {
     public function __construct()
     {

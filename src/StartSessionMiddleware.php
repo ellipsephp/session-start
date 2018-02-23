@@ -86,7 +86,7 @@ class StartSessionMiddleware implements MiddlewareInterface
      * @return void
      * @throws \Ellipse\Session\Exceptions\SessionsDisabledException
      */
-    private function failWhenDisabled(): void
+    private function failWhenDisabled()
     {
         if (session_status() === PHP_SESSION_DISABLED) {
 
@@ -101,7 +101,7 @@ class StartSessionMiddleware implements MiddlewareInterface
      * @return void
      * @throws \Ellipse\Session\Exceptions\SessionAlreadyStartedException
      */
-    private function failWhenStarted(): void
+    private function failWhenStarted()
     {
         if (session_status() === PHP_SESSION_ACTIVE) {
 
@@ -116,7 +116,7 @@ class StartSessionMiddleware implements MiddlewareInterface
      * @return void
      * @throws \Ellipse\Session\Exceptions\SessionAlreadyClosedException
      */
-    private function failWhenClosed(): void
+    private function failWhenClosed()
     {
         if (session_status() === PHP_SESSION_NONE) {
 

@@ -1,13 +1,13 @@
 <?php
 
-use Ellipse\Session\Exceptions\SessionDisabledException;
+use Ellipse\Session\Exceptions\SessionStartException;
 use Ellipse\Session\Exceptions\SessionStartExceptionInterface;
 
-describe('SessionDisabledException', function () {
+describe('SessionStartException', function () {
 
     it('should implement SessionStartExceptionInterface', function () {
 
-        $test = new SessionDisabledException;
+        $test = new SessionStartException;
 
         expect($test)->toBeAnInstanceOf(SessionStartExceptionInterface::class);
 

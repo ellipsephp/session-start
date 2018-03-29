@@ -5,21 +5,11 @@ use Ellipse\Session\Exceptions\SessionStartExceptionInterface;
 
 describe('SessionAlreadyStartedException', function () {
 
-    beforeEach(function () {
-
-        $this->exception = new SessionAlreadyStartedException;
-
-    });
-
     it('should implement SessionStartExceptionInterface', function () {
 
-        expect($this->exception)->toBeAnInstanceOf(SessionStartExceptionInterface::class);
+        $test = new SessionAlreadyStartedException;
 
-    });
-
-    it('should extend RuntimeException', function () {
-
-        expect($this->exception)->toBeAnInstanceOf(RuntimeException::class);
+        expect($test)->toBeAnInstanceOf(SessionStartExceptionInterface::class);
 
     });
 

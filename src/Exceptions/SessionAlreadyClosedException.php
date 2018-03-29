@@ -8,8 +8,6 @@ class SessionAlreadyClosedException extends RuntimeException implements SessionS
 {
     public function __construct()
     {
-        $msg = "Session is already closed. Session must not be manually closed in order to use StartSessionMiddleware.";
-
-        parent::__construct($msg);
+        parent::__construct('Session is already closed: session must not be manually closed to use StartSessionMiddleware');
     }
 }

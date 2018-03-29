@@ -8,8 +8,6 @@ class SessionAlreadyStartedException extends RuntimeException implements Session
 {
     public function __construct()
     {
-        $msg = "Session is already started. Session must not be manually started in order to use StartSessionMiddleware.";
-
-        parent::__construct($msg);
+        parent::__construct('Session is already started: session must not be manually started to use StartSessionMiddleware');
     }
 }

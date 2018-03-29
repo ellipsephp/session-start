@@ -10,7 +10,8 @@ use Psr\Http\Server\RequestHandlerInterface;
 use Dflydev\FigCookies\SetCookie;
 use Dflydev\FigCookies\FigResponseCookies;
 
-use Ellipse\Session\Exceptions\SessionsDisabledException;
+use Ellipse\Session\Exceptions\SessionStartException;
+use Ellipse\Session\Exceptions\SessionDisabledException;
 use Ellipse\Session\Exceptions\SessionAlreadyStartedException;
 use Ellipse\Session\Exceptions\SessionAlreadyClosedException;
 
@@ -22,75 +23,90 @@ class StartSessionMiddleware implements MiddlewareInterface
      * @var array
      */
     const SESSION_OPTIONS = [
+        'use_trans_sid' => false,
         'use_cookies' => false,
         'use_only_cookies' => true,
     ];
+
+    /**
+     * The session cookie name.
+     *
+     * @var string
+     */
+    private $name;
 
     /**
      * The session cookie options.
      *
      * @var array
      */
-    private $cookie;
+    private $options;
 
     /**
-     * Set up a start session middleware with the given cookie options.
+     * Set up a start session middleware with the given cookie name and options.
      *
-     * @param array $cookie
+     * @param string    $name
+     * @param array     $options
      */
-    public function __construct(array $cookie = [])
+    public function __construct(string $name = 'ellipse_session', array $options = [])
     {
-        $this->cookie = $cookie;
+        $this->name = $name;
+        $this->options = $options;
     }
 
     /**
-     * Start the session, delegate the request processing and add the session
-     * cookie to the response.
+     * Start the session, handle the request and add the session cookie to the
+     * response.
      *
      * @param \Psr\Http\Message\ServerRequestInterface  $request
      * @param \Psr\Http\Server\RequestHandlerInterface  $handler
      * @return \Psr\Http\Message\ResponseInterface
+     * @throws \Ellipse\Session\Exceptions\SessionStartException
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        // Set the session id from the request cookies when present.
-        $options = $this->cookieOptions();
-
-        $session_id = $this->sessionId($request, $options);
-
-        if ($session_id != '') session_id($session_id);
-
-        // Start the session and delegate the request processing.
+        // Fail when session is disabled or has already started.
         $this->failWhenDisabled();
         $this->failWhenStarted();
 
-        session_name($options['name']);
+        // Try to retrieve the session id from the request cookies.
+        $cookies = $request->getCookieParams();
 
-        session_start(self::SESSION_OPTIONS);
+        $session_id = $cookies[$this->name] ?? '';
 
-        $response = $handler->handle($request);
+        if ($session_id != '') session_id($session_id);
 
-        $this->failWhenClosed();
+        // Handle the request when session_start is successful.
+        if (session_start(self::SESSION_OPTIONS)) {
 
-        // Save the session and return a response with the session cookie.
-        $session_id = session_id();
+            session_name($this->name);
 
-        session_write_close();
+            $response = $handler->handle($request);
 
-        return $this->withSessionCookie($response, $session_id, $options);
+            $this->failWhenClosed();
+
+            $session_id = session_id();
+
+            session_write_close();
+
+            return $this->withSessionCookie($response, $session_id);
+
+        }
+
+        throw new SessionStartException;
     }
 
     /**
-     * Fail when the sessions are disabled.
+     * Fail when the session is disabled.
      *
      * @return void
-     * @throws \Ellipse\Session\Exceptions\SessionsDisabledException
+     * @throws \Ellipse\Session\Exceptions\SessionDisabledException
      */
     private function failWhenDisabled()
     {
         if (session_status() === PHP_SESSION_DISABLED) {
 
-            throw new SessionsDisabledException;
+            throw new SessionDisabledException;
 
         }
     }
@@ -126,65 +142,35 @@ class StartSessionMiddleware implements MiddlewareInterface
     }
 
     /**
-     * Return the session cookie options merged with the default ones.
-     *
-     * @return array
-     */
-    private function cookieOptions(): array
-    {
-        $default = session_get_cookie_params();
-        $default['name'] = session_name();
-
-        $default = array_change_key_case($default, CASE_LOWER);
-        $cookie = array_change_key_case($this->cookie, CASE_LOWER);
-
-        return array_merge($default, $cookie);
-    }
-
-    /**
-     * Return the session id from the given request. Default to empty string.
-     *
-     * @param string    $session_id
-     * @param array     $options
-     * @return string
-     */
-    private function sessionId(ServerRequestInterface $request, array $options): string
-    {
-        $name = $options['name'];
-
-        $cookies = $request->getCookieParams();
-
-        return $cookies[$name] ?? '';
-    }
-
-    /**
-     * Return new response based on the given response with a cookie built from
-     * the given session id and cookie options.
+     * Attach a session cookie with the given sesison id to the given response.
      *
      * @param \Psr\Http\Message\ResponseInterface   $response
      * @param string                                $session_id
-     * @param array                                 $options
      * @return \Psr\Http\Message\ResponseInterface
      */
-    private function withSessionCookie(ResponseInterface $response, string $session_id, array $options): ResponseInterface
+    private function withSessionCookie(ResponseInterface $response, string $session_id): ResponseInterface
     {
-        $cookie_name = $options['name'];
-        $cookie_lifetime = $options['lifetime'] < 0 ? 0 : $options['lifetime'];
-        $cookie_path = $options['path'];
-        $cookie_domain = $options['domain'];
-        $secure = $options['secure'];
-        $httponly = $options['httponly'];
+        // Merge session cookie options.
+        $default = session_get_cookie_params();
 
-        $cookie = SetCookie::create($cookie_name, $session_id)
-            ->withMaxAge($cookie_lifetime)
-            ->withPath($cookie_path)
-            ->withDomain($cookie_domain)
-            ->withSecure($secure)
-            ->withHttpOnly($httponly);
+        $default = array_change_key_case($default, CASE_LOWER);
+        $options = array_change_key_case($this->options, CASE_LOWER);
 
-        if ($cookie_lifetime > 0) {
+        $options = array_merge($default, $options);
 
-            $cookie = $cookie->withExpires(time() + $cookie_lifetime);
+        if ($options['lifetime'] < 0) $options['lifetime'] = 0;
+
+        // Create a session cookie and attach it to the response.
+        $cookie = SetCookie::create($this->name, $session_id)
+            ->withMaxAge($options['lifetime'])
+            ->withPath($options['path'])
+            ->withDomain($options['domain'])
+            ->withSecure($options['secure'])
+            ->withHttpOnly($options['httponly']);
+
+        if ($options['lifetime'] > 0) {
+
+            $cookie = $cookie->withExpires(time() + $options['lifetime']);
 
         }
 
